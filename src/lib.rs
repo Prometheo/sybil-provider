@@ -51,6 +51,7 @@ impl Contract {
         let account_id = env::signer_account_id();
         let user_dat = self.records.get(&account_id); // get user records
         if user_dat.is_some() { // if record exists, assert that handle is not already registered nor has it expired.
+
             assert!(!self.handles.get(&(platform.clone(), handle.clone())).is_some() || user_dat.as_ref().unwrap().socials.get(&platform).map_or(false, |x| x.expiry_date < block_timestamp()), "handle already registered");
         }
         let signature = ed25519_dalek::Signature::try_from(signature.as_ref()).expect("invalid SIg.");
@@ -80,6 +81,7 @@ impl Contract {
         
     }
 
+    #[payable]
     pub fn update_access_key(&mut self, signature: Vec<u8>, account_info: u32, max_block_height: u64) {
         require!(max_block_height > env::block_height(), "expired request"); // assert that request is not expired by block height
         let account_id = env::signer_account_id();
@@ -102,6 +104,7 @@ impl Contract {
     }
 
 
+    #[payable]
     pub fn update_contract_age(&mut self, signature: Vec<u8>, account_info: u128, max_block_height: u64) {
         require!(max_block_height > env::block_height(), "expired request"); // assert that request is not expired by block height
         let account_id = env::signer_account_id();
@@ -127,14 +130,14 @@ impl Contract {
 
     pub fn connected_to_5_contracts(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
-            return data.access_key_count.unwrap() >= 5; 
+            return data.access_key_count.unwrap_or(0) >= 5; 
         }
         false
     }
 
     pub fn connected_to_20_contracts(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
-            return data.access_key_count.unwrap() >= 20; 
+            return data.access_key_count.unwrap_or(0) >= 20; 
         }
         false
     }
@@ -158,13 +161,14 @@ impl Contract {
 
     pub fn connected_to_10_contracts(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
-            return data.access_key_count.unwrap() >= 10; 
+            return data.access_key_count.unwrap_or(0) >= 10; 
         }
         false
     }
 
     pub fn six_month_old(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
+            if data.account_age.is_none() {return false}
             let age_nanoseconds = data.account_age.unwrap();
             let now = block_timestamp();
             let six_months = 6 * 30 * 24 * 60 * 60 * 1_000_000_000;
@@ -183,6 +187,7 @@ impl Contract {
 
     pub fn is_two_year_old(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
+            if data.account_age.is_none() {return false}
             let age_nanoseconds = data.account_age.unwrap();
             let now = block_timestamp();
             let two_years = 2 * 365 * 24 * 60 * 60 * 1_000_000_000;
@@ -193,6 +198,7 @@ impl Contract {
 
     pub fn is_one_year_old(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
+            if data.account_age.is_none() {return false}
             let age_nanoseconds = data.account_age.unwrap();
             let now = block_timestamp();
             let one_year = 365 * 24 * 60 * 60 * 1_000_000_000;
@@ -203,6 +209,7 @@ impl Contract {
 
     pub fn is_three_month_old(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
+            if data.account_age.is_none() {return false}
             let age_nanoseconds = data.account_age.unwrap();
             let now = block_timestamp();
             let three_months = 3 * 30 * 24 * 60 * 60 * 1_000_000_000;
@@ -213,10 +220,18 @@ impl Contract {
 
     pub fn is_a_month_old(&self, account_id: AccountId) -> bool {
         if let Some(data) = self.records.get(&account_id) {
+            if data.account_age.is_none() {return false}
             let age_nanoseconds = data.account_age.unwrap();
             let now = block_timestamp();
             let one_month = 30 * 24 * 60 * 60 * 1_000_000_000; // abstract 30 * 24 * 60 * 60 * 1_000_000_000 to a constant
             return (now - age_nanoseconds as u64) >= one_month;
+        }
+        false
+    }
+
+    pub fn connected_to_twitter(&self, account_id: AccountId) -> bool {
+        if let Some(data) = self.records.get(&account_id) {
+            if data.socials.get("twitter").is_some() {return true}
         }
         false
     }
