@@ -53,6 +53,8 @@ impl Contract {
         if user_dat.is_some() { // if record exists, assert that handle is not already registered nor has it expired.
 
             assert!(!self.handles.get(&(platform.clone(), handle.clone())).is_some() || user_dat.as_ref().unwrap().socials.get(&platform).map_or(false, |x| x.expiry_date < block_timestamp()), "handle already registered");
+        } else {
+            assert!(!self.handles.get(&(platform.clone(), handle.clone())).is_some(), "handle already registered");
         }
         let signature = ed25519_dalek::Signature::try_from(signature.as_ref()).expect("invalid SIg.");
         let public_key = ed25519_dalek::PublicKey::from_bytes(&self.admin_pub.as_bytes()[1..]).unwrap();
